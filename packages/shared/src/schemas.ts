@@ -29,6 +29,7 @@ export const createCourtBodySchema = courtFields
   .extend({ isActive: z.boolean().default(true) })
   .refine(openBeforeClose, openBeforeCloseIssue);
 export type CreateCourtBody = z.input<typeof createCourtBodySchema>;
+export type CreateCourtInput = z.output<typeof createCourtBodySchema>;
 
 /** Partial update; when only one of the hours is sent, the service checks it against the stored value. */
 export const updateCourtBodySchema = courtFields
