@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: courtly
       POSTGRES_DB: courtly
     ports:
-      - "5433:5432"
+      - "5433:5432" # exposed for local tests / psql; 5433 to avoid clashing with a local Postgres
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -14,6 +14,75 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+
+  # One-shot: apply migrations, then seed demo data (idempotent). The api only starts once this succeeds.
+  migrate:
+    build:
+      context: .
+      target: api
+    command: ["sh", "-c", "node apps/api/dist/scripts/migrate.js && node apps/api/dist/scripts/seed.js"]
+    environment:
+      DATABASE_URL: postgres://courtly:courtly@db:5432/courtly
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      target: api
+    environment:
+      DATABASE_URL: postgres://courtly:courtly@db:5432/courtly
+      JWT_SECRET: ${JWT_SECRET:-local-dev-secret-change-me}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      target: web
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Backend test suite against this compose database:  docker compose run --rm api-test
+  api-test:
+    profiles: ["test"]
+    build:
+      context: .
+      target: test
+    environment:
+      TEST_DATABASE_URL: postgres://courtly:courtly@db:5432/courtly_test
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Performance note (bonus): seeds ~70k bookings into a separate database and prints timings.
+  #   docker compose run --rm perf
+  perf:
+    profiles: ["perf"]
+    build:
+      context: .
+      target: api
+    command: ["node", "apps/api/dist/scripts/perf.js"]
+    environment:
+      PERF_DATABASE_URL: postgres://courtly:courtly@db:5432/courtly_perf
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   db-data:
