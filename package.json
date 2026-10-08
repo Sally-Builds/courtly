@@ -1,0 +1,17 @@
+{
+  "name": "courtly",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @courtly/shared && npm run build -w @courtly/api && npm run build -w @courtly/web",
+    "typecheck": "npm run build -w @courtly/shared && npm run typecheck --workspaces --if-present",
+    "test": "npm run test -w @courtly/api && npm run test -w @courtly/web"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
