@@ -14,17 +14,7 @@ import { toBookingDto } from '../bookings/bookings.service.js';
 export async function getDayView(db: Db, date: string): Promise<AdminDayView> {
   const day = facilityDayBounds(date);
 
-  const rows = await db
-    .select({
-      booking: bookings,
-      court: { name: courts.name, sport: courts.sport },
-      user: { id: users.id, name: users.name, email: users.email },
-    })
-    .from(bookings)
-    .innerJoin(courts, eq(courts.id, bookings.courtId))
-    .innerJoin(users, eq(users.id, bookings.userId))
-    .where(and(gte(bookings.startsAt, day.start), lt(bookings.startsAt, day.end)))
-    .orderBy(asc(bookings.startsAt), asc(courts.name));
+  const rows = await bookingsStartingBetween(db, day.start, day.end);
 
   const dayBookings = rows.map((r) => ({ ...toBookingDto(r.booking, r.court), user: r.user }));
   const confirmed = dayBookings.filter((b) => b.status === 'confirmed');
@@ -37,3 +27,17 @@ export async function getDayView(db: Db, date: string): Promise<AdminDayView> {
     totalRevenueCents: confirmed.reduce((sum, b) => sum + b.priceCents, 0),
   };
 }
+
+/** Served by bookings_starts_at_idx (btree on starts_at). */
+export const bookingsStartingBetween = (db: Db, start: Date, end: Date) =>
+  db
+    .select({
+      booking: bookings,
+      court: { name: courts.name, sport: courts.sport },
+      user: { id: users.id, name: users.name, email: users.email },
+    })
+    .from(bookings)
+    .innerJoin(courts, eq(courts.id, bookings.courtId))
+    .innerJoin(users, eq(users.id, bookings.userId))
+    .where(and(gte(bookings.startsAt, start), lt(bookings.startsAt, end)))
+    .orderBy(asc(bookings.startsAt), asc(courts.name));

@@ -83,18 +83,7 @@ export async function getAvailability(db: Db, courtId: string, date: string, now
   }
 
   const day = facilityDayBounds(date);
-  // Same expression as the exclusion constraint, so this is served by its GiST index.
-  const taken = await db
-    .select({ startsAt: bookings.startsAt, endsAt: bookings.endsAt })
-    .from(bookings)
-    .where(
-      and(
-        eq(bookings.courtId, courtId),
-        eq(bookings.status, 'confirmed'),
-        sql`tstzrange(${bookings.startsAt}, ${bookings.endsAt}, '[)') && tstzrange(${day.start.toISOString()}::timestamptz, ${day.end.toISOString()}::timestamptz, '[)')`,
-      ),
-    );
-
+  const taken = await confirmedBookingsOverlapping(db, courtId, day.start, day.end);
   return {
     court,
     date,
@@ -102,3 +91,19 @@ export async function getAvailability(db: Db, courtId: string, date: string, now
     slots: buildDaySlots(court, date, taken, now),
   };
 }
+
+/**
+ * Confirmed bookings on a court overlapping [start, end). Uses the same range expression and
+ * predicate as the exclusion constraint, so the constraint's GiST index serves this query.
+ */
+export const confirmedBookingsOverlapping = (db: Db, courtId: string, start: Date, end: Date) =>
+  db
+    .select({ startsAt: bookings.startsAt, endsAt: bookings.endsAt })
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.courtId, courtId),
+        eq(bookings.status, 'confirmed'),
+        sql`tstzrange(${bookings.startsAt}, ${bookings.endsAt}, '[)') && tstzrange(${start.toISOString()}::timestamptz, ${end.toISOString()}::timestamptz, '[)')`,
+      ),
+    );
