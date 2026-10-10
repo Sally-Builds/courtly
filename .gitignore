@@ -6,3 +6,6 @@ coverage/
 .env.*
 !.env.example
 .DS_Store
+
+# Saved perf benchmark runs (regenerate with: docker compose run --rm -T perf > perf-results.md)
+perf-results*.md
