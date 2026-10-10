@@ -20,6 +20,8 @@ services:
     build:
       context: .
       target: api
+    # Always build from the current source; never reuse a stale image with the same name.
+    pull_policy: build
     command: ["sh", "-c", "node apps/api/dist/scripts/migrate.js && node apps/api/dist/scripts/seed.js"]
     environment:
       DATABASE_URL: postgres://courtly:courtly@db:5432/courtly
@@ -31,6 +33,8 @@ services:
     build:
       context: .
       target: api
+    # Always build from the current source; never reuse a stale image with the same name.
+    pull_policy: build
     environment:
       DATABASE_URL: postgres://courtly:courtly@db:5432/courtly
       JWT_SECRET: ${JWT_SECRET:-local-dev-secret-change-me}
@@ -51,6 +55,8 @@ services:
     build:
       context: .
       target: web
+    # Always build from the current source; never reuse a stale image with the same name.
+    pull_policy: build
     ports:
       - "8080:80"
     depends_on:
