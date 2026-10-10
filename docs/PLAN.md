@@ -30,15 +30,18 @@
 POST  /api/auth/login            GET /api/auth/me
 GET   /api/courts                POST /api/courts [admin]     PATCH /api/courts/:id [admin]
 GET   /api/courts/:id/availability?date=YYYY-MM-DD
-POST  /api/bookings              GET /api/bookings/me         POST /api/bookings/:id/cancel
+POST  /api/bookings [user]       GET /api/bookings/me [user]  POST /api/bookings/:id/cancel [user]
 GET   /api/admin/bookings?date=YYYY-MM-DD [admin]  → { bookings, totalRevenueCents }
 ```
 Errors: `{ error: { code, message, details? } }` — 400 / 401 / 403 / 404 / 409 / 422.
+Roles: users book and cancel their own bookings; admins are staff who manage courts and see all bookings.
 
 ## Docker
 `db` (healthcheck) → `migrate` (migrations + idempotent seed, one-shot) → `api` → `web` (nginx).
 Seed bookings are relative to "today" so they're meaningful whenever the project is run.
 `api-test` (profile `test`) runs the backend test suite against the compose database.
+`perf` (profile `perf`) runs the performance benchmark in a separate `courtly_perf` database.
 
 ## Bonus
-Performance note: seed 10k+ bookings, report `EXPLAIN ANALYZE` timings for availability and admin day view.
+Performance note: seed 10k+ bookings, report `EXPLAIN ANALYZE` timings for availability and admin day view
+(results in `docs/PERFORMANCE.md`).
