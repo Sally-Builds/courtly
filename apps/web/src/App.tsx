@@ -18,10 +18,18 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return children;
 }
 
-/** UI-side guard for navigation only; the API enforces the admin role independently. */
+// UI-side guards are for navigation only; the API enforces both roles independently.
+
 function RequireAdmin({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   if (user?.role !== 'admin') return <EmptyState>This page is only available to administrators.</EmptyState>;
+  return children;
+}
+
+/** Booking pages are for customers; admins (staff) are sent to their day view. */
+function RequireCustomer({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  if (user?.role === 'admin') return <Navigate to="/admin/day" replace />;
   return children;
 }
 
@@ -36,9 +44,9 @@ export function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<CourtsPage />} />
-        <Route path="courts/:courtId" element={<CourtBookingPage />} />
-        <Route path="bookings" element={<MyBookingsPage />} />
+        <Route index element={<RequireCustomer><CourtsPage /></RequireCustomer>} />
+        <Route path="courts/:courtId" element={<RequireCustomer><CourtBookingPage /></RequireCustomer>} />
+        <Route path="bookings" element={<RequireCustomer><MyBookingsPage /></RequireCustomer>} />
         <Route path="admin/day" element={<RequireAdmin><AdminDayPage /></RequireAdmin>} />
         <Route path="admin/courts" element={<RequireAdmin><AdminCourtsPage /></RequireAdmin>} />
         <Route path="*" element={<EmptyState>Page not found.</EmptyState>} />

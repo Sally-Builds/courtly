@@ -1,6 +1,6 @@
 import express, { type Express } from 'express';
 import type { AppDeps } from './app-deps.js';
-import { authenticate } from './middleware/auth.js';
+import { authenticate, requireRole } from './middleware/auth.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
@@ -19,7 +19,8 @@ export function createApp(deps: AppDeps): Express {
   const requireAuth = authenticate(deps.jwtSecret);
   app.use('/api/auth', authRouter(deps));
   app.use('/api/courts', requireAuth, courtsRouter(deps));
-  app.use('/api/bookings', requireAuth, bookingsRouter(deps));
+  // Bookings are made by customers; admins are staff accounts and only manage courts / view bookings.
+  app.use('/api/bookings', requireAuth, requireRole('user'), bookingsRouter(deps));
   app.use('/api/admin', requireAuth, adminRouter(deps));
 
   app.use(notFoundHandler);

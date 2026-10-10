@@ -24,6 +24,30 @@ describe('role separation is enforced by the API', () => {
     }
   });
 
+  it('does not let admins make, list or cancel bookings (they are staff, not customers)', async () => {
+    const court = await ctx.createCourt();
+    const admin = await ctx.createUser('admin');
+    const customer = await ctx.createUser('user');
+    const booking = await request(ctx.app)
+      .post('/api/bookings')
+      .set('Authorization', customer.auth)
+      .send({ courtId: court.id, startsAt: lisbon('2030-06-11T10:00').toISOString(), durationHours: 1 })
+      .expect(201);
+
+    const attempts = [
+      request(ctx.app)
+        .post('/api/bookings')
+        .set('Authorization', admin.auth)
+        .send({ courtId: court.id, startsAt: lisbon('2030-06-11T12:00').toISOString(), durationHours: 1 }),
+      request(ctx.app).get('/api/bookings/me').set('Authorization', admin.auth),
+      request(ctx.app).post(`/api/bookings/${booking.body.id}/cancel`).set('Authorization', admin.auth),
+    ];
+    for (const res of await Promise.all(attempts)) {
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+    }
+  });
+
   it('rejects a forged token', async () => {
     const res = await request(ctx.app)
       .get('/api/admin/bookings')
